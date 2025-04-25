@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Github-api-autocomplete</title>
+
+    <style>
+        body{
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: 400;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+           
+        }
+
+        .container{
+            max-width: 700px;   
+            min-height: 600px;
+            margin: 0 auto;
+            padding: 80px;
+            background-color: rgba(196, 196, 196, 1);
+        }
+
+        #autocomplete{
+            position: relative;
+            width: 100%;
+        }
+
+        #autocomplete-input{
+            box-sizing: border-box;
+            width: 100%;
+            height: 60px;
+            padding: 5px;
+            background-color:rgba(255, 255, 255, 1);
+            font-size: 48px;
+        }
+        
+        #autocomplete-results{
+            box-sizing: border-box;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            background-color:rgba(255, 255, 255, 1);
+            z-index: 10;
+            display: none;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border: 2px solid rgba(0, 0, 0, 1)
+        }
+
+        #autocomplete-results li{
+            padding: 10px;
+             cursor: pointer; 
+             font-size: 30px;
+        }
+
+        #autocomplete-results li:hover{
+            background-color: rgba(227, 227, 227, 1);
+        }
+
+        #repositories{
+            margin-top: 20px;
+            padding: 0;
+            list-style: none;
+        }
+
+        #repositories li{
+            display: flex;
+            justify-content: space-between;
+            
+            align-items: center;
+            padding: 8px 15px;
+            font-size: 24px;
+            background-color: rgba(226, 123, 235, 1);
+            border: 1px solid rgba(0, 0, 0, 1);
+           
+        }
+        
+        #repositories li button{
+            color: red;
+            border: none;
+            cursor: pointer;
+            background: none;
+            font-size: 70px;
+            padding: 0;
+            width: 42px;
+            height: 42px;
+            display: flex; 
+            align-items: center;        
+            justify-content: center;
+        }
+
+        #repositories li button:hover{
+            border:  4px solid rgb(112, 0, 0)
+        }
+ 
+        .rep-info {               
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+
+    </style>
+
+</head>
+
+<body>
+    <div class="container"> 
+        <h1>Github-API-autocomplete</h1>
+        <div id="autocomplete">
+            <input type="text" id="autocomplete-input" placeholder="Введите имя репозитория ...">
+            <ul id="autocomplete-results"></ul>
+        </div>
+
+        <h2>Репозитории:</h2>
+        <ul id="repositories"></ul>
+
+    </div>
+
+    <script>
+
+        const autocompleteInput= document.getElementById('autocomplete-input')
+        const autocompleteResults= document.getElementById('autocomplete-results')
+        const repositoriesList = document.getElementById('repositories')
+
+        let addedRep=[]
+        // получаем репозитории
+        
+        async function searchRepositories(query) {
+            const apiUrl=`https://api.github.com/search/repositories?q=${query}&per_page=5`;
+            
+            try{
+                const response =await fetch(apiUrl)
+                const data= await response.json()
+                
+                if(data.items){
+                    displayAutocompleteResults(data.items)
+                }else{
+                    autocompleteResults.style.display='none'
+                }
+            }catch(error){
+                console.error('ошибка фетч даты:',error)
+                autocompleteResults.style.display='none'
+            };
+            
+        }
+        
+        function displayAutocompleteResults(results){
+        
+            autocompleteResults.innerHTML='';
+
+            results.forEach(rep=>{
+                const li= document.createElement('li');
+                li.textContent = rep.name;
+                li.addEventListener('click', ()=>{
+                    addRep(rep)
+                    autocompleteInput.value='';
+                    autocompleteResults.style.display='none'
+                })
+                autocompleteResults.appendChild(li)
+            })
+            autocompleteResults.style.display='block'
+        }
+                //добавляем реп в список
+        function addRep(rep){
+            addedRep.push(rep)
+            viewRep()
+        }
+
+                //показ реп в списке
+ 
+                function viewRep(){
+                    repositoriesList.innerHTML=''
+                    addedRep.forEach(rep=>{
+                        const li = document.createElement('li')
+                        li.innerHTML=`
+                        <div class="rep-info">
+                        <span>Name:${rep.name}</span>
+                        <span>Owner:${rep.owner.login}</span>
+                        <span>Stars:${rep.stargazers_count}</span>
+                        </div>
+                        <button data-id="${rep.id}">×</button>
+                        `;
+                        
+                        const removeButton = li.querySelector('button')
+                        removeButton.addEventListener('click',()=>{
+                            removeRep(rep.id)
+                        })
+                        repositoriesList.appendChild(li)
+                    })
+                }
+ 
+                //удаления реп из списка
+    
+        function removeRep(repId){
+            addedRep=addedRep.filter(rep=> rep.id !==repId)
+            viewRep()
+        }
+
+                    //дебаунс
+        
+        function debounce(fn,delay){
+                let timerId;
+
+                return function(event){
+                const context = this;    
+                const later=()=>{fn.call(context,event)
+                }
+                clearTimeout(timerId) 
+                timerId= setTimeout(later, delay)
+                };
+        }
+
+        autocompleteInput.addEventListener('input',debounce((event)=>{
+
+            const query=event.target.value
+            searchRepositories(query)},300)
+        
+    )
+
+
+
+    </script>
+</body>
+</html>
